@@ -1319,30 +1319,65 @@ return { barcode: item.barcode, packQty, autoDivFactor,
     workbook.creator='Price Manager';
     const worksheet=workbook.addWorksheet('Сравнение');
     const totalCols=1+fileNames.length+nameFileOrder.length+excelCols.length;
+    // Индексы колонок (1-based)
+    const fbS=2, fbE=1+fileNames.length, nsS=fbE+1, nsE=nsS+nameFileOrder.length-1;
 
-    // Стили — идентичны корзине заказов
-    const _xlHdrFill   = { type:'pattern', pattern:'solid', fgColor:{argb:'FF3B6FD4'} };
-    const _xlHdrFont   = { bold:true, color:{argb:'FFFFFFFF'}, size:10 };
-    const _xlThinBrd   = { style:'thin',   color:{argb:'FFC8CDD8'} };
-    const _xlBoldBrd   = { style:'medium', color:{argb:'FF3B6FD4'} };
+    // ---- Стили идентичны корзине заказов ----
+    const _xlHdrFill = { type:'pattern', pattern:'solid', fgColor:{argb:'FF3B6FD4'} };
+    const _xlHdrFont = { bold:true, color:{argb:'FFFFFFFF'}, size:10 };
+    const _xlThinBrd = { style:'thin',   color:{argb:'FFC8CDD8'} };
+    const _xlBoldBrd = { style:'medium', color:{argb:'FF3B6FD4'} };
 
+    // ---- Ширины колонок (задаём до записи строк) ----
+    worksheet.getColumn(1).width = 16;
+    for(let _c=fbS; _c<=fbE; _c++) worksheet.getColumn(_c).width = 14;
+    for(let _c=nsS; _c<=nsE; _c++) {
+        worksheet.getColumn(_c).width = (hasMyPrice && _c===nsS) ? 50 : 22;
+    }
+    excelCols.forEach((col, _idx) => {
+        const _ci = priceStartColBase + _idx + 1;
+        worksheet.getColumn(_ci).width = isPriceLikeColumn(col.columnName) ? 12 : 16;
+    });
+
+    // ---- Шапка ----
     const headers=['Штрихкод'];
-    fileNames.forEach(fn=>headers.push(`Штрихкод (${truncateFileName(fn, 20)})`));
+    fileNames.forEach(fn=>headers.push(`Штрихкод (${truncateFileName(fn, 18)})`));
     nameFileOrder.forEach(fn=>headers.push('Наименование'));
     excelCols.forEach(col=>{
         const _isMyP=!col.metaType&&col.fileName===MY_PRICE_FILE_NAME;
         if(_isMyP||col.metaType){
             headers.push(col.metaType?col.displayName:col.columnName);
         } else {
-            headers.push(truncateFileName(col.fileName, 20)+'\n'+col.columnName);
+            // Разделитель строки: имя файла + колонка — два уровня в ячейке
+            headers.push(truncateFileName(col.fileName, 18)+'\n'+col.columnName);
         }
     });
-    const _xlH=worksheet.addRow(headers);
-    _xlH.alignment={vertical:'middle',horizontal:'center',wrapText:true};
-    _xlH.height=45;
 
-    dataToExport.forEach(item=>{
+    const _xlH=worksheet.addRow(headers);
+    _xlH.height=34;
+    // Стили шапки — per-cell (как в корзине), чтобы границы гарантированно применились
+    for(let _ci=1; _ci<=totalCols; _ci++){
+        const _eci=_ci-1-priceStartColBase;
+        const _grpL = _ci===1 || (_eci>=0 && thickLeftAt.has(_eci));
+        const _hc = _xlH.getCell(_ci);
+        _hc.font      = _xlHdrFont;
+        _hc.fill      = _xlHdrFill;
+        _hc.alignment = { vertical:'middle', horizontal:'center', wrapText:true };
+        _hc.border    = {
+            top:    _xlBoldBrd,
+            left:   _grpL      ? _xlBoldBrd : _xlThinBrd,
+            bottom: _xlThinBrd,
+            right:  _ci===totalCols ? _xlBoldBrd : _xlThinBrd
+        };
+    }
+    if(fbS<=headers.length) _xlH.getCell(fbS).note='Штрихкоды по файлам';
+    if(nsS<=headers.length) _xlH.getCell(nsS).note='Наименования по файлам';
+
+    // ---- Строки данных ----
+    const _xlTotalDataRows=dataToExport.length;
+    dataToExport.forEach((item, _rowIdx)=>{
         {
+            const _isLastRow = _rowIdx === _xlTotalDataRows - 1;
             const row=[item.barcode];
             fileNames.forEach(fn=>row.push(item.originalBarcodesByFile.get(fn)||''));
             nameFileOrder.forEach(fn=>row.push((item.namesByFile&&item.namesByFile.get(fn))||''));
@@ -1350,7 +1385,6 @@ return { barcode: item.barcode, packQty, autoDivFactor,
             const numericColsInRow=[];
             const _eg={'нал':[],'бн':[],'other':[]};
             const _ei={'нал':[],'бн':[],'other':[]};
-
             const _egFiles={'нал':new Set(),'бн':new Set(),'other':new Set()};
             const _multiValCols=new Set();
             excelCols.forEach((col,idx)=>{
@@ -1370,19 +1404,14 @@ return { barcode: item.barcode, packQty, autoDivFactor,
                                 _eg[_g].push(uniquePrices[0]);
                                 _ei[_g].push({ci:priceStartCol+idx,vi:_eg[_g].length-1});
                                 _egFiles[_g].add(col.fileName);
-
                             }
                         } else if(uniquePrices.length>1){
                             cellValue=uniquePrices.map(p=>String(p).replace('.',',')).join(' / ');
                             _multiValCols.add(priceStartCol+idx);
                             if(col.fileName!==MY_PRICE_FILE_NAME){
                                 const _g=getColPayGroup(col);
-
-                                const cellMin=Math.min(...uniquePrices);
                                 const cellMinIdx=_eg[_g].length;
-
                                 uniquePrices.forEach(p=>{ _eg[_g].push(p); });
-
                                 _ei[_g].push({ci:priceStartCol+idx,vi:cellMinIdx});
                                 _egFiles[_g].add(col.fileName);
                             }
@@ -1399,10 +1428,11 @@ return { barcode: item.barcode, packQty, autoDivFactor,
                 row.push(cellValue);
             });
             const excelRow=worksheet.addRow(row);
+            excelRow.height=16;
             numericColsInRow.forEach(ci=>{const c=excelRow.getCell(ci+1);if(typeof c.value==='number')c.numFmt='0.0';});
-            if(item.isSynonym){excelRow.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE6F7FF'}};}
-            if(showMinPriceMode){
 
+            // Шрифт минимальных цен — до основного цикла ячеек
+            if(showMinPriceMode){
                 const _allNums=[];
                 excelCols.forEach((col,idx)=>{
                     if(col.metaType) return;
@@ -1415,8 +1445,7 @@ return { barcode: item.barcode, packQty, autoDivFactor,
                 if(_allNums.length>0){
                     const _absM=Math.min(..._allNums.map(x=>x.n));
                     _allNums.filter(x=>x.n===_absM).forEach(({ci})=>{
-                        const cell=excelRow.getCell(ci+1);
-                        cell.font={color:{argb:'FF16A34A'},bold:true};
+                        excelRow.getCell(ci+1).font={color:{argb:'FF16A34A'},bold:true,size:10};
                     });
                 }
             } else {
@@ -1426,51 +1455,36 @@ return { barcode: item.barcode, packQty, autoDivFactor,
                         const minCells=new Set();
                         _ei[g].forEach(({ci,vi})=>{if(_eg[g][vi]===mn)minCells.add(ci);});
                         minCells.forEach(ci=>{
-                            const cell=excelRow.getCell(ci+1);
-                            cell.font={color:{argb:'FFDC2626'},bold:true};
+                            excelRow.getCell(ci+1).font={color:{argb:'FFDC2626'},bold:true,size:10};
                         });
                     }
                 });
             }
+
+            // Границы, выравнивание и базовый шрифт — per-cell (как в корзине)
+            for(let _ci=1; _ci<=totalCols; _ci++){
+                const _eci=_ci-1-priceStartColBase;
+                const _grpL = _ci===1 || (_eci>=0 && thickLeftAt.has(_eci));
+                const _cell=excelRow.getCell(_ci);
+                // Сохраняем цветной шрифт минимальных цен, иначе базовый
+                if(!_cell.font || !_cell.font.bold) _cell.font={size:10};
+                // Синоним: подкрашиваем только первую ячейку
+                if(_ci===1 && item.isSynonym) _cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE6F7FF'}};
+                _cell.alignment={vertical:'middle', horizontal:(_ci>priceStartColBase)?'right':'left'};
+                _cell.border={
+                    top:    _xlThinBrd,
+                    left:   _grpL      ? _xlBoldBrd : _xlThinBrd,
+                    bottom: _isLastRow ? _xlBoldBrd : _xlThinBrd,
+                    right:  _ci===totalCols ? _xlBoldBrd : _xlThinBrd
+                };
+            }
         }
     });
 
-    const fbS=2,fbE=1+fileNames.length,nsS=fbE+1,nsE=nsS+nameFileOrder.length-1;
-    worksheet.columns.forEach((col,idx)=>{
-        const ci=idx+1;
-        if(ci===1)col.width=15;
-        else if(ci>=fbS&&ci<=fbE)col.width=13;
-        else if(ci>=nsS&&ci<=nsE)col.width=(hasMyPrice&&nameFileOrder[0]===myPriceFileName&&ci===nsS)?50:20;
-        else col.width=10;
-    });
+    // ---- Группировка / скрытие вспомогательных колонок ----
     if(fileNames.length>0){worksheet.properties.outlineProperties={summaryBelow:true};for(let c=fbS;c<=fbE;c++){worksheet.getColumn(c).outlineLevel=1;worksheet.getColumn(c).hidden=true;}}
     if(nameFileOrder.length>1){worksheet.properties.outlineProperties={summaryBelow:true};const st=hasMyPrice?nsS+1:nsS;for(let c=st;c<=nsE;c++){worksheet.getColumn(c).outlineLevel=1;worksheet.getColumn(c).hidden=true;}}
     worksheet.views=[{state:'frozen',xSplit:0,ySplit:1}];
-
-    const totalRows=worksheet.rowCount;
-    worksheet.eachRow((row,rowNum)=>{
-        row.eachCell({includeEmpty:true},(cell,colNum)=>{
-            const _eci=colNum-1-priceStartColBase;
-            const _isLeft  = colNum===1 || (_eci>=0 && thickLeftAt.has(_eci));
-            const _isRight = colNum===totalCols;
-            const _isTop   = rowNum===1;
-            const _isBot   = rowNum===totalRows;
-            cell.border={
-                top:    _isTop  ? _xlBoldBrd : _xlThinBrd,
-                left:   _isLeft ? _xlBoldBrd : _xlThinBrd,
-                bottom: _isBot  ? _xlBoldBrd : _xlThinBrd,
-                right:  _isRight? _xlBoldBrd : _xlThinBrd
-            };
-        });
-    });
-
-    const headerRow=worksheet.getRow(1);
-    headerRow.font=_xlHdrFont;
-    headerRow.fill=_xlHdrFill;
-    headerRow.alignment={vertical:'middle',horizontal:'center',wrapText:true};
-    headerRow.height=45;
-    if(fbS<=headers.length)headerRow.getCell(fbS).note='Штрихкоды по файлам';
-    if(nsS<=headers.length)headerRow.getCell(nsS).note='Наименования по файлам';
 
     const buffer=await workbook.xlsx.writeBuffer();
     const now=new Date(),yyyy=now.getFullYear(),mm=String(now.getMonth()+1).padStart(2,'0'),dd=String(now.getDate()).padStart(2,'0');
