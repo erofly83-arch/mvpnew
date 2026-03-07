@@ -996,11 +996,11 @@ return { barcode: item.barcode, packQty, autoDivFactor,
             const _firstName = [..._nmC.keys()][0];
             const _allNames = [..._nmC.keys()].join(' | ');
             const _extraCount = _nmC.size - 1;
-            // data-pm-names: [{file, name, barcode}] для тултипа
+            // data-pm-names: [{file, name, barcode}] для тултипа (escv — экранирует кавычки в атрибуте)
             const _tipData = JSON.stringify([..._nmC.entries()].map(([name, file]) => ({
                 file, name, barcode: item.originalBarcodesByFile.get(file) || ''
             })));
-            html += `<td class="col-name" data-pm-names="${esc(_tipData)}"><div class="name-compact" title="${esc(_allNames)}">${esc(_firstName)}<span style="color:var(--text-muted);font-size:10px;margin-left:4px;">(+${_extraCount})</span></div></td>`;
+            html += `<td class="col-name" data-pm-names="${escv(_tipData)}"><div class="name-compact" title="${esc(_allNames)}">${esc(_firstName)}<span style="color:var(--text-muted);font-size:10px;margin-left:4px;">(+${_extraCount})</span></div></td>`;
         } else if (item.names.length > 0) {
             const _nm = new Map();
             item.names.forEach(n => { if (!_nm.has(n.name)) _nm.set(n.name, n.fileName); });
@@ -1770,7 +1770,8 @@ return { barcode: item.barcode, packQty, autoDivFactor,
     };
 
     // ---- Тултип для ячеек наименования ----
-    // Карточка: одна строка = один прайс: [значок прайса] [наименование] [штрихкод]
+    // Драйвер — mousemove (один обработчик). mouseout не используем: он стреляет
+    // при переходе между дочерними элементами td и постоянно сбрасывает таймер.
     (function() {
         var _tip = document.createElement('div');
         _tip.id = 'pmNameTip';
@@ -1784,15 +1785,15 @@ return { barcode: item.barcode, packQty, autoDivFactor,
         ].join(';');
         document.body.appendChild(_tip);
 
-        var _timer = null, _lastTd = null;
+        var _timer = null, _curTd = null, _mx = 0, _my = 0;
 
         function _pos(x, y) {
             var tw = _tip.offsetWidth || 260, th = _tip.offsetHeight || 80;
             var vw = window.innerWidth, vh = window.innerHeight;
-            var left = x + 18, top = y + 12;
+            var left = x + 18, top = y + 14;
             if (left + tw > vw - 8) left = x - tw - 18;
             if (left < 8) left = 8;
-            if (top + th > vh - 8) top = y - th - 12;
+            if (top + th > vh - 8) top = y - th - 14;
             if (top < 8) top = 8;
             _tip.style.left = left + 'px';
             _tip.style.top  = top  + 'px';
@@ -1808,60 +1809,49 @@ return { barcode: item.barcode, packQty, autoDivFactor,
             try { rows = JSON.parse(raw); } catch(e) { return ''; }
             if (!rows || !rows.length) return '';
 
-            // Шапка
             var html = '<div style="background:#F0F4FF;border-bottom:1px solid #E2E6EE;padding:6px 12px 5px;font-size:10px;font-weight:700;color:#3B6FD4;letter-spacing:.04em;text-transform:uppercase;">Наименования по прайсам</div>';
             html += '<div style="padding:4px 0;">';
-
             rows.forEach(function(r, i) {
                 var file    = _trunc(r.file || '', 28);
                 var name    = _esc(r.name  || '');
                 var barcode = _esc(r.barcode || '');
-                var isOdd   = i % 2 === 1;
-                var bg = isOdd ? 'background:#F8F9FC;' : '';
-                html += '<div style="display:flex;align-items:baseline;gap:0;padding:4px 12px;' + bg + '">';
-                // Колонка прайса
+                var bg = i % 2 === 1 ? 'background:#F8F9FC;' : '';
+                html += '<div style="display:flex;align-items:baseline;padding:4px 12px;' + bg + '">';
                 html += '<span style="flex-shrink:0;width:130px;font-size:10px;color:#6B7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + _esc(r.file||'') + '">' + _esc(file) + '</span>';
-                // Наименование
                 html += '<span style="flex:1;font-size:12px;color:#1A1D23;font-weight:500;padding:0 8px;min-width:0;overflow-wrap:break-word;">' + name + '</span>';
-                // Штрихкод
-                if (barcode) {
-                    html += '<span style="flex-shrink:0;font-size:10px;color:#9CA3AF;font-family:\'Courier New\',monospace;white-space:nowrap;padding-left:8px;">' + barcode + '</span>';
-                }
+                if (barcode) html += '<span style="flex-shrink:0;font-size:10px;color:#9CA3AF;font-family:\'Courier New\',monospace;white-space:nowrap;padding-left:8px;">' + barcode + '</span>';
                 html += '</div>';
             });
-
             html += '</div>';
             return html;
         }
 
-        document.addEventListener('mouseover', function(e) {
-            var td = e.target.closest('#mainTableWrap td.col-name');
-            if (!td || td === _lastTd) return;
-            _lastTd = td;
-            clearTimeout(_timer);
-            _tip.style.display = 'none';
-            _timer = setTimeout(function() {
-                var html = _build(td);
-                if (!html) return;
-                _tip.innerHTML = html;
-                _tip.style.display = 'block';
-                _pos(e.clientX, e.clientY);
-            }, 250);
-        });
+        function _show() {
+            if (!_curTd) return;
+            var html = _build(_curTd);
+            if (!html) return;
+            _tip.innerHTML = html;
+            _tip.style.display = 'block';
+            _pos(_mx, _my);
+        }
 
         document.addEventListener('mousemove', function(e) {
-            if (_tip.style.display === 'none') return;
-            if (!e.target.closest('#mainTableWrap td.col-name')) {
-                _tip.style.display = 'none'; _lastTd = null; return;
-            }
-            _pos(e.clientX, e.clientY);
-        });
+            _mx = e.clientX; _my = e.clientY;
+            var td = e.target.closest ? e.target.closest('#mainTableWrap td.col-name') : null;
 
-        document.addEventListener('mouseout', function(e) {
-            if (!e.target.closest || !e.target.closest('#mainTableWrap td.col-name')) return;
-            clearTimeout(_timer);
-            _tip.style.display = 'none'; _lastTd = null;
-        });
+            if (td !== _curTd) {
+                // Курсор перешёл на другой td (или ушёл совсем)
+                clearTimeout(_timer);
+                _tip.style.display = 'none';
+                _curTd = td;
+                if (td) {
+                    _timer = setTimeout(_show, 300);
+                }
+            } else if (_tip.style.display !== 'none') {
+                // Двигаемся внутри того же td — обновляем позицию
+                _pos(_mx, _my);
+            }
+        }, { passive: true });
     })();
 
     // Expose barcode lookup for cart "my price" feature
