@@ -2144,19 +2144,7 @@ function _updatePriceCardsLock() {
 
   // Подсказка под кнопками
   var hint = document.getElementById(hintId);
-  if (locked) {
-    if (!hint) {
-      hint = document.createElement('div');
-      hint.id = hintId;
-      hint.style.cssText = 'font-size:11px;color:var(--orange,#d97706);margin-top:6px;text-align:center;width:100%;';
-      hint.textContent = '⬆ Сначала загрузите файл памяти';
-      var wrap = document.querySelector('.obr-upload-btns');
-      if (wrap) wrap.parentNode.insertBefore(hint, wrap.nextSibling);
-    }
-    hint.style.display = '';
-  } else {
-    if (hint) hint.style.display = 'none';
-  }
+  if (hint) hint.style.display = locked ? '' : 'none';
 }
 
 function _handleJsonFileUpload(file, afterLoad) {
