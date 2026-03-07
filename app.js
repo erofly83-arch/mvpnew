@@ -1309,6 +1309,37 @@ return { barcode: item.barcode, packQty, autoDivFactor,
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
+    // Возвращает fileName поставщика с минимальной ценой для позиции не из моего прайса.
+    // Если ценовых колонок нет — берёт первого поставщика у которого есть штрихкод.
+    function _getBestSupplierForItem(item) {
+        const supplierMinPrices = new Map(); // fileName -> minPrice
+        allColumns.forEach(col => {
+            if (col.metaType || col.fileName === MY_PRICE_FILE_NAME) return;
+            if (!isPriceLikeColumn(col.columnName)) return;
+            const va = item.values.get(col.key);
+            if (!va || !va.length) return;
+            va.forEach(vObj => {
+                const n = parsePriceNumber(vObj.val);
+                if (n !== null && n > 0) {
+                    const cur = supplierMinPrices.get(col.fileName);
+                    if (cur === undefined || n < cur) supplierMinPrices.set(col.fileName, n);
+                }
+            });
+        });
+        if (supplierMinPrices.size > 0) {
+            let bestFn = null, bestPrice = Infinity;
+            supplierMinPrices.forEach((price, fn) => {
+                if (price < bestPrice) { bestPrice = price; bestFn = fn; }
+            });
+            return bestFn;
+        }
+        // Нет цен — берём первого поставщика у которого есть этот товар
+        for (const fn of item.filesWithBarcode) {
+            if (fn !== MY_PRICE_FILE_NAME) return fn;
+        }
+        return null;
+    }
+
     async function generateExcel(mode) {
     try {
     const _exMeta=allColumns.filter(c=>c.metaType&&visibleColumns.has(c.key));
@@ -1406,9 +1437,30 @@ return { barcode: item.barcode, packQty, autoDivFactor,
     const _xlTotalRows = dataToExport.length;
     dataToExport.forEach((item, _rowIdx) => {
         const _isLast = _rowIdx === _xlTotalRows - 1;
-        const row=[item.barcode];
+
+        // Для позиций не из моего прайса: подставляем штрихкод и наименование
+        // от поставщика с минимальной ценой на этот товар
+        let _supplierFill = false;
+        let _mainBarcode = item.barcode;
+        let _mainNameOverride = null;
+        if (!item.isInMyPrice) {
+            const _bestSup = _getBestSupplierForItem(item);
+            if (_bestSup) {
+                _mainBarcode = item.originalBarcodesByFile.get(_bestSup) || item.barcode;
+                _mainNameOverride = item.namesByFile ? item.namesByFile.get(_bestSup) || null : null;
+                _supplierFill = true;
+            }
+        }
+
+        const row=[_mainBarcode];
         fileNames.forEach(fn=>row.push(item.originalBarcodesByFile.get(fn)||''));
-        nameFileOrder.forEach(fn=>row.push((item.namesByFile&&item.namesByFile.get(fn))||''));
+        nameFileOrder.forEach(fn=>{
+            let nm = (item.namesByFile && item.namesByFile.get(fn)) || '';
+            // Если позиции нет в моём прайсе — подставляем наименование лучшего поставщика
+            // в колонку «Наименование» (первую, обычно это колонка моего прайса)
+            if (_supplierFill && !nm && fn === nameFileOrder[0] && _mainNameOverride) nm = _mainNameOverride;
+            row.push(nm);
+        });
         const priceStartCol=row.length;
         const numericColsInRow=[];
         const _eg={'нал':[],'бн':[],'other':[]};
@@ -1480,6 +1532,9 @@ return { barcode: item.barcode, packQty, autoDivFactor,
             });
         }
 
+        // Светло-жёлтый фон для подставленных штрихкода/наименования (позиций не из моего прайса)
+        const _ylwFill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFFF59D' } };
+
         // Per-cell: шрифт, выравнивание, границы
         for(let _ci=1; _ci<=totalCols; _ci++){
             const _eci = _ci - 1 - priceStartColBase;
@@ -1493,6 +1548,10 @@ return { barcode: item.barcode, packQty, autoDivFactor,
                 left:   _grpL           ? _B : _T,
                 right:  _ci===totalCols ? _B : _T
             };
+            // Жёлтый фон только на ячейки штрихкода (col 1) и первого наименования (col nsS)
+            if (_supplierFill && (_ci === 1 || _ci === nsS)) {
+                _cell.fill = _ylwFill;
+            }
         }
     });
 
