@@ -996,11 +996,18 @@ return { barcode: item.barcode, packQty, autoDivFactor,
             const _firstName = [..._nmC.keys()][0];
             const _allNames = [..._nmC.keys()].join(' | ');
             const _extraCount = _nmC.size - 1;
-            html += `<td class="col-name"><div class="name-compact" title="${esc(_allNames)}">${esc(_firstName)}<span style="color:var(--text-muted);font-size:10px;margin-left:4px;">(+${_extraCount})</span></div></td>`;
+            // data-pm-names: [{file, name, barcode}] для тултипа
+            const _tipData = JSON.stringify([..._nmC.entries()].map(([name, file]) => ({
+                file, name, barcode: item.originalBarcodesByFile.get(file) || ''
+            })));
+            html += `<td class="col-name" data-pm-names="${esc(_tipData)}"><div class="name-compact" title="${esc(_allNames)}">${esc(_firstName)}<span style="color:var(--text-muted);font-size:10px;margin-left:4px;">(+${_extraCount})</span></div></td>`;
         } else if (item.names.length > 0) {
-            html += `<td class="col-name"><div class="name-cell">`;
             const _nm = new Map();
             item.names.forEach(n => { if (!_nm.has(n.name)) _nm.set(n.name, n.fileName); });
+            const _tipData = JSON.stringify([..._nm.entries()].map(([name, file]) => ({
+                file, name, barcode: item.originalBarcodesByFile.get(file) || ''
+            })));
+            html += `<td class="col-name" data-pm-names="${esc(_tipData)}"><div class="name-cell">`;
             _nm.forEach((fn, name) => { html += `<div class="name-item" title="📁 ${esc(fn)}">${esc(name)}</div>`; });
             html += `</div></td>`;
         } else {
@@ -1763,61 +1770,67 @@ return { barcode: item.barcode, packQty, autoDivFactor,
     };
 
     // ---- Тултип для ячеек наименования ----
-    // Лёгкий вариант: один div, позиционируется за курсором, показывается через 280мс.
-    // Содержит штрихкод + все наименования со ссылкой на прайс источник.
+    // Карточка: одна строка = один прайс: [значок прайса] [наименование] [штрихкод]
     (function() {
         var _tip = document.createElement('div');
         _tip.id = 'pmNameTip';
         _tip.style.cssText = [
-            'display:none', 'position:fixed', 'z-index:10001',
-            'max-width:340px', 'min-width:160px',
-            'background:#fff', 'border:1px solid #C8CDD8',
-            'border-radius:6px', 'box-shadow:0 4px 20px rgba(0,0,0,.14)',
-            'font-size:12px', 'font-family:Inter,sans-serif',
-            'padding:9px 13px', 'pointer-events:none',
-            'line-height:1.5', 'color:#1A1D23', 'word-break:break-word'
+            'display:none','position:fixed','z-index:10001',
+            'max-width:520px','min-width:220px',
+            'background:#fff','border:1px solid #E2E6EE',
+            'border-radius:8px','box-shadow:0 6px 24px rgba(0,0,0,.13)',
+            'font-size:12px','font-family:Inter,sans-serif',
+            'padding:0','pointer-events:none','overflow:hidden'
         ].join(';');
         document.body.appendChild(_tip);
 
         var _timer = null, _lastTd = null;
 
         function _pos(x, y) {
-            var tw = _tip.offsetWidth || 200, th = _tip.offsetHeight || 60;
-            var vw = window.innerWidth,      vh = window.innerHeight;
-            var left = x + 16, top = y + 10;
-            if (left + tw > vw - 6) left = x - tw - 16;
-            if (left < 6) left = 6;
-            if (top + th > vh - 6) top = y - th - 10;
-            if (top < 6) top = 6;
+            var tw = _tip.offsetWidth || 260, th = _tip.offsetHeight || 80;
+            var vw = window.innerWidth, vh = window.innerHeight;
+            var left = x + 18, top = y + 12;
+            if (left + tw > vw - 8) left = x - tw - 18;
+            if (left < 8) left = 8;
+            if (top + th > vh - 8) top = y - th - 12;
+            if (top < 8) top = 8;
             _tip.style.left = left + 'px';
             _tip.style.top  = top  + 'px';
         }
 
-        function _build(td) {
-            var tr = td.closest('tr');
-            var barcode = tr ? (tr.getAttribute('data-barcode') || '') : '';
-            var html = '';
-            if (barcode) html += '<div style="font-size:10px;color:#6B7280;margin-bottom:5px;font-weight:600;">&#9641; ' + barcode + '</div>';
+        function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+        function _trunc(s, n) { return s && s.length > n ? s.slice(0, n-1) + '\u2026' : (s||''); }
 
-            // Компактный режим — title содержит все наименования через ' | '
-            var compact = td.querySelector('.name-compact');
-            if (compact) {
-                var allN = compact.getAttribute('title') || compact.textContent || '';
-                allN.split(' | ').forEach(function(n) {
-                    n = n.trim();
-                    if (n) html += '<div style="margin-bottom:1px;">' + n + '</div>';
-                });
-            } else {
-                // Развёрнутый режим — .name-item, title = "📁 fileName"
-                td.querySelectorAll('.name-item').forEach(function(ni) {
-                    var nm = ni.textContent.trim();
-                    var src = (ni.getAttribute('title') || '').replace(/^📁\s*/, '');
-                    if (!nm) return;
-                    html += '<div style="margin-bottom:2px;">' + nm;
-                    if (src) html += '<span style="color:#9CA3AF;font-size:10px;margin-left:5px;">' + src + '</span>';
-                    html += '</div>';
-                });
-            }
+        function _build(td) {
+            var raw = td.getAttribute('data-pm-names');
+            if (!raw) return '';
+            var rows;
+            try { rows = JSON.parse(raw); } catch(e) { return ''; }
+            if (!rows || !rows.length) return '';
+
+            // Шапка
+            var html = '<div style="background:#F0F4FF;border-bottom:1px solid #E2E6EE;padding:6px 12px 5px;font-size:10px;font-weight:700;color:#3B6FD4;letter-spacing:.04em;text-transform:uppercase;">Наименования по прайсам</div>';
+            html += '<div style="padding:4px 0;">';
+
+            rows.forEach(function(r, i) {
+                var file    = _trunc(r.file || '', 28);
+                var name    = _esc(r.name  || '');
+                var barcode = _esc(r.barcode || '');
+                var isOdd   = i % 2 === 1;
+                var bg = isOdd ? 'background:#F8F9FC;' : '';
+                html += '<div style="display:flex;align-items:baseline;gap:0;padding:4px 12px;' + bg + '">';
+                // Колонка прайса
+                html += '<span style="flex-shrink:0;width:130px;font-size:10px;color:#6B7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + _esc(r.file||'') + '">' + _esc(file) + '</span>';
+                // Наименование
+                html += '<span style="flex:1;font-size:12px;color:#1A1D23;font-weight:500;padding:0 8px;min-width:0;overflow-wrap:break-word;">' + name + '</span>';
+                // Штрихкод
+                if (barcode) {
+                    html += '<span style="flex-shrink:0;font-size:10px;color:#9CA3AF;font-family:\'Courier New\',monospace;white-space:nowrap;padding-left:8px;">' + barcode + '</span>';
+                }
+                html += '</div>';
+            });
+
+            html += '</div>';
             return html;
         }
 
@@ -1833,7 +1846,7 @@ return { barcode: item.barcode, packQty, autoDivFactor,
                 _tip.innerHTML = html;
                 _tip.style.display = 'block';
                 _pos(e.clientX, e.clientY);
-            }, 280);
+            }, 250);
         });
 
         document.addEventListener('mousemove', function(e) {
