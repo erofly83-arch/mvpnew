@@ -160,7 +160,7 @@ let barcodeAliasMap=new Map(),synonymsLoaded=false;
           this.style.color = 'var(--text-primary)';
           this.style.fontWeight = '';
         }
-        renderTable();
+        renderTable(true);
       });
     }
     bigDiffBtn.addEventListener('click', toggleBigDiff);
@@ -265,13 +265,13 @@ function samePrice(a, b) {
         if (!_newQuery && !searchQuery) return; // nothing changed
         if (!_newQuery) {
             searchQuery = '';
-            renderTable();
+            renderTable(true);
             return;
         }
         // Non-empty query — debounce to avoid re-renders on every keystroke
         _searchDebounceTimer = setTimeout(() => {
             searchQuery = _newQuery;
-            renderTable();
+            renderTable(true);
         }, 180);
     }
 
@@ -728,7 +728,7 @@ return { barcode: item.barcode, packQty, autoDivFactor,
             showMinPriceMode = true;
             if (minPriceBtn) minPriceBtn.classList.add('active');
         }
-        renderTable();
+        renderTable(true);
     }
 
     function toggleBigDiff() {
@@ -739,7 +739,7 @@ return { barcode: item.barcode, packQty, autoDivFactor,
             sortMode = 'bigdiff';
             bigDiffBtn.classList.add('active');
         }
-        renderTable();
+        renderTable(true);
     }
 
     function toggleMyPriceView() {
@@ -750,7 +750,7 @@ return { barcode: item.barcode, packQty, autoDivFactor,
             sortMode = 'myprice';
             showMyPriceBtn.classList.add('active');
         }
-        renderTable();
+        renderTable(true);
     }
 
     function toggleMaxCoverage() {
@@ -765,14 +765,14 @@ return { barcode: item.barcode, packQty, autoDivFactor,
             filterNewItems = true;
             maxCoverageBtn.classList.add('active');
         }
-        renderTable();
+        renderTable(true);
     }
 
     function toggleCompactMatches() {
         compactMatches = !compactMatches;
         if (compactMatches) compactMatchesBtn.classList.add('active');
         else compactMatchesBtn.classList.remove('active');
-        renderTable();
+        renderTable(true);
 
     }
 
@@ -842,7 +842,7 @@ return { barcode: item.barcode, packQty, autoDivFactor,
         sel.style.color = 'var(--text-primary)';
         sel.style.fontWeight = '';
         // Defer renderTable so buildCategoryDropdown finishes first
-        setTimeout(function() { if (typeof renderTable === 'function') renderTable(); }, 0);
+        setTimeout(function() { if (typeof renderTable === 'function') renderTable(true); }, 0);
       }
       // update category words modal if open
       _catExclUpdateBadge();
@@ -1481,9 +1481,9 @@ return { barcode: item.barcode, packQty, autoDivFactor,
             _cell.font = _minCells.has(_ci) ? _fntRed : _fntBase;
             _cell.alignment = { vertical:'middle', horizontal:(_ci>priceStartColBase)?'right':'left' };
             _cell.border = {
-                top:    _T,
+                top:    _rowIdx === 0 ? _B : _T,   // жирная граница под шапкой у первой строки
                 bottom: _isLast ? _B : _T,
-                left:   _grpL        ? _B : _T,
+                left:   _grpL           ? _B : _T,
                 right:  _ci===totalCols ? _B : _T
             };
         }
@@ -1761,6 +1761,95 @@ return { barcode: item.barcode, packQty, autoDivFactor,
         setTimeout(() => { renderTable(); }, 30);
       }
     };
+
+    // ---- Тултип для ячеек наименования ----
+    // Лёгкий вариант: один div, позиционируется за курсором, показывается через 280мс.
+    // Содержит штрихкод + все наименования со ссылкой на прайс источник.
+    (function() {
+        var _tip = document.createElement('div');
+        _tip.id = 'pmNameTip';
+        _tip.style.cssText = [
+            'display:none', 'position:fixed', 'z-index:10001',
+            'max-width:340px', 'min-width:160px',
+            'background:#fff', 'border:1px solid #C8CDD8',
+            'border-radius:6px', 'box-shadow:0 4px 20px rgba(0,0,0,.14)',
+            'font-size:12px', 'font-family:Inter,sans-serif',
+            'padding:9px 13px', 'pointer-events:none',
+            'line-height:1.5', 'color:#1A1D23', 'word-break:break-word'
+        ].join(';');
+        document.body.appendChild(_tip);
+
+        var _timer = null, _lastTd = null;
+
+        function _pos(x, y) {
+            var tw = _tip.offsetWidth || 200, th = _tip.offsetHeight || 60;
+            var vw = window.innerWidth,      vh = window.innerHeight;
+            var left = x + 16, top = y + 10;
+            if (left + tw > vw - 6) left = x - tw - 16;
+            if (left < 6) left = 6;
+            if (top + th > vh - 6) top = y - th - 10;
+            if (top < 6) top = 6;
+            _tip.style.left = left + 'px';
+            _tip.style.top  = top  + 'px';
+        }
+
+        function _build(td) {
+            var tr = td.closest('tr');
+            var barcode = tr ? (tr.getAttribute('data-barcode') || '') : '';
+            var html = '';
+            if (barcode) html += '<div style="font-size:10px;color:#6B7280;margin-bottom:5px;font-weight:600;">&#9641; ' + barcode + '</div>';
+
+            // Компактный режим — title содержит все наименования через ' | '
+            var compact = td.querySelector('.name-compact');
+            if (compact) {
+                var allN = compact.getAttribute('title') || compact.textContent || '';
+                allN.split(' | ').forEach(function(n) {
+                    n = n.trim();
+                    if (n) html += '<div style="margin-bottom:1px;">' + n + '</div>';
+                });
+            } else {
+                // Развёрнутый режим — .name-item, title = "📁 fileName"
+                td.querySelectorAll('.name-item').forEach(function(ni) {
+                    var nm = ni.textContent.trim();
+                    var src = (ni.getAttribute('title') || '').replace(/^📁\s*/, '');
+                    if (!nm) return;
+                    html += '<div style="margin-bottom:2px;">' + nm;
+                    if (src) html += '<span style="color:#9CA3AF;font-size:10px;margin-left:5px;">' + src + '</span>';
+                    html += '</div>';
+                });
+            }
+            return html;
+        }
+
+        document.addEventListener('mouseover', function(e) {
+            var td = e.target.closest('#mainTableWrap td.col-name');
+            if (!td || td === _lastTd) return;
+            _lastTd = td;
+            clearTimeout(_timer);
+            _tip.style.display = 'none';
+            _timer = setTimeout(function() {
+                var html = _build(td);
+                if (!html) return;
+                _tip.innerHTML = html;
+                _tip.style.display = 'block';
+                _pos(e.clientX, e.clientY);
+            }, 280);
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (_tip.style.display === 'none') return;
+            if (!e.target.closest('#mainTableWrap td.col-name')) {
+                _tip.style.display = 'none'; _lastTd = null; return;
+            }
+            _pos(e.clientX, e.clientY);
+        });
+
+        document.addEventListener('mouseout', function(e) {
+            if (!e.target.closest || !e.target.closest('#mainTableWrap td.col-name')) return;
+            clearTimeout(_timer);
+            _tip.style.display = 'none'; _lastTd = null;
+        });
+    })();
 
     // Expose barcode lookup for cart "my price" feature
     window._pmLookupBarcode = function(bc) {
@@ -7917,7 +8006,7 @@ document.addEventListener('click', function(e) {
         hc.font      = fntBold;
         hc.alignment = { vertical:'middle', horizontal: i >= 2 ? 'right' : 'left' };
         hc.border    = {
-          top:    T, bottom: B,
+          top:    B, bottom: B,
           left:   i === 0         ? B : T,
           right:  i === lastCol-1 ? B : T
         };
@@ -7952,8 +8041,8 @@ document.addEventListener('click', function(e) {
           cell2.font      = fntBase;
           cell2.alignment = { vertical:'middle', horizontal: ci >= 3 ? 'right' : 'left' };
           cell2.border    = {
-            top:    T,
-            bottom: isLastItem ? T : T,   // последняя строка перед итого — тонкая
+            top:    itIdx === 0 ? B : T,        // первый товар — жирная граница от шапки
+            bottom: isLastItem  ? B : T,        // последний товар — жирная граница к итого
             left:   ci === 1       ? B : T,
             right:  ci === lastCol ? B : T
           };
