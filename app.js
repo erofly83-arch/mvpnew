@@ -1167,8 +1167,13 @@ return { barcode: item.barcode, packQty, autoDivFactor,
 
         // Вычисляем ключи колонок с жирным левым разделителем (мой прайс→поставщик, нал→бн→прочие)
         _vsGroupSepKeys = new Set();
+        // Разделитель: остаток(meta) → первая колонка моего прайса
+        const _vsMetaEnd = _vsVisibleCols.findIndex(c => !c.metaType);
+        if (_vsMetaEnd > 0) _vsGroupSepKeys.add(_vsVisibleCols[_vsMetaEnd].key);
+        // Разделитель: мой прайс → первый поставщик
         const _vsFsi = _vsVisibleCols.findIndex(c => !c.metaType && c.fileName !== MY_PRICE_FILE_NAME);
         if (_vsFsi > 0) _vsGroupSepKeys.add(_vsVisibleCols[_vsFsi].key);
+        // Разделители нал/бн/прочие внутри поставщиков
         for (let _vi = 1; _vi < _vsVisibleCols.length; _vi++) {
             const _vp = _vsVisibleCols[_vi - 1], _vc = _vsVisibleCols[_vi];
             if (!_vc.metaType && _vc.fileName !== MY_PRICE_FILE_NAME
@@ -1312,8 +1317,13 @@ return { barcode: item.barcode, packQty, autoDivFactor,
     const priceStartColBase=1+fileNames.length+nameFileOrder.length;
 
     const thickLeftAt=new Set();
+    // Разделитель: остаток(meta) → первая колонка моего прайса
+    const _fsiMyP=excelCols.findIndex(c=>!c.metaType&&c.fileName===MY_PRICE_FILE_NAME);
+    if(_fsiMyP>0) thickLeftAt.add(_fsiMyP);
+    // Разделитель: мой прайс → первая колонка поставщика
     const _fsi=excelCols.findIndex(c=>!c.metaType&&c.fileName!==MY_PRICE_FILE_NAME);
     if(_fsi>0) thickLeftAt.add(_fsi);
+    // Разделители между группами нал/бн/прочие у поставщиков
     for(let i=1;i<excelCols.length;i++){
         const p=excelCols[i-1],c=excelCols[i];
         if(!c.metaType&&c.fileName!==MY_PRICE_FILE_NAME&&!p.metaType&&p.fileName!==MY_PRICE_FILE_NAME)
@@ -1337,11 +1347,12 @@ return { barcode: item.barcode, packQty, autoDivFactor,
     const totalCols=1+fileNames.length+nameFileOrder.length+excelCols.length;
     const fbS=2, fbE=1+fileNames.length, nsS=fbE+1, nsE=nsS+nameFileOrder.length-1;
 
-    // ---- Единая палитра границ: тонкие внутри, жирные снаружи/шапка/разделители ----
-    const _T = { style:'thin',   color:{argb:'FFD1D5DB'} }; // тонкая серая
-    const _B = { style:'medium', color:{argb:'FF374151'} }; // жирная тёмная
+    // ---- Единая палитра границ: тонкие чёрные внутри, жирные снаружи/шапка/разделители ----
+    const _T = { style:'thin',   color:{argb:'FF000000'} }; // тонкая чёрная
+    const _B = { style:'medium', color:{argb:'FF000000'} }; // жирная чёрная
     const _fntBase = { size:10, color:{argb:'FF000000'} };
     const _fntBold = { size:10, bold:true, color:{argb:'FF000000'} };
+    const _fntRed  = { size:10, bold:true, color:{argb:'FFDC2626'} }; // красный для мин. цен
 
     // ---- Ширины колонок ----
     worksheet.getColumn(1).width = 16;                                             // штрихкод
@@ -1383,8 +1394,6 @@ return { barcode: item.barcode, packQty, autoDivFactor,
     }
     if(fbS<=headers.length) _xlH.getCell(fbS).note='Штрихкоды по файлам';
     if(nsS<=headers.length) _xlH.getCell(nsS).note='Наименования по файлам';
-    // Автофильтр по шапке — удобно сортировать/фильтровать в Excel
-    worksheet.autoFilter = { from:{row:1,column:1}, to:{row:1,column:totalCols} };
 
     // ---- Строки данных ----
     const _xlTotalRows = dataToExport.length;
@@ -1439,7 +1448,7 @@ return { barcode: item.barcode, packQty, autoDivFactor,
             if(typeof c.value==='number') c.numFmt='#,##0.0';
         });
 
-        // Жирный шрифт для минимальных цен (без цвета)
+        // Красный жирный для минимальных цен
         const _minCells = new Set();
         if(showMinPriceMode){
             const _allNums=[];
@@ -1469,7 +1478,7 @@ return { barcode: item.barcode, packQty, autoDivFactor,
             const _eci = _ci - 1 - priceStartColBase;
             const _grpL = _ci===1 || (_eci>=0 && thickLeftAt.has(_eci));
             const _cell = excelRow.getCell(_ci);
-            _cell.font = _minCells.has(_ci) ? _fntBold : _fntBase;
+            _cell.font = _minCells.has(_ci) ? _fntRed : _fntBase;
             _cell.alignment = { vertical:'middle', horizontal:(_ci>priceStartColBase)?'right':'left' };
             _cell.border = {
                 top:    _T,
@@ -7859,9 +7868,9 @@ document.addEventListener('click', function(e) {
     var suppliers = Object.keys(cart);
     var row = 1;
 
-    // Единая палитра: тонкие внутри, жирные снаружи/шапка/поставщик/итого
-    var T = { style:'thin',   color:{argb:'FFD1D5DB'} };
-    var B = { style:'medium', color:{argb:'FF374151'} };
+    // Единая палитра: тонкие чёрные внутри, жирные чёрные снаружи/шапка/поставщик/итого
+    var T = { style:'thin',   color:{argb:'FF000000'} };
+    var B = { style:'medium', color:{argb:'FF000000'} };
     var fntBase = { size:10 };
     var fntBold = { size:10, bold:true };
 
