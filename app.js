@@ -4687,6 +4687,8 @@ function jeUpdateStatus() {
   const hasData = n > 0;
   document.getElementById('jeTable').style.display = hasData ? '' : 'none';
   document.getElementById('jeEmpty').style.display = hasData ? 'none' : '';
+  const jeWrapEl = document.getElementById('jeTableWrap');
+  if (jeWrapEl) { jeWrapEl.style.border = hasData ? '' : 'none'; jeWrapEl.style.borderRadius = hasData ? '' : '0'; }
   const jeStatusRow = document.getElementById('jeStatusRow');
   const jeSearchRow = document.getElementById('jeSearchRow');
   if (jeStatusRow) jeStatusRow.style.display = hasData ? 'flex' : 'none';
