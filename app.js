@@ -1000,7 +1000,7 @@ return { barcode: item.barcode, packQty, autoDivFactor,
             const _tipData = JSON.stringify([..._nmC.entries()].map(([name, file]) => ({
                 file, name, barcode: item.originalBarcodesByFile.get(file) || ''
             })));
-            html += `<td class="col-name" data-pm-names="${escv(_tipData)}"><div class="name-compact" title="${esc(_allNames)}">${esc(_firstName)}<span style="color:var(--text-muted);font-size:10px;margin-left:4px;">(+${_extraCount})</span></div></td>`;
+            html += `<td class="col-name" data-pm-names="${escv(_tipData)}"><div class="name-compact">${esc(_firstName)}<span style="color:var(--text-muted);font-size:10px;margin-left:4px;">(+${_extraCount})</span></div></td>`;
         } else if (item.names.length > 0) {
             const _nm = new Map();
             item.names.forEach(n => { if (!_nm.has(n.name)) _nm.set(n.name, n.fileName); });
@@ -1008,7 +1008,7 @@ return { barcode: item.barcode, packQty, autoDivFactor,
                 file, name, barcode: item.originalBarcodesByFile.get(file) || ''
             })));
             html += `<td class="col-name" data-pm-names="${escv(_tipData)}"><div class="name-cell">`;
-            _nm.forEach((fn, name) => { html += `<div class="name-item" title="📁 ${esc(fn)}">${esc(name)}</div>`; });
+            _nm.forEach((fn, name) => { html += `<div class="name-item">${esc(name)}</div>`; });
             html += `</div></td>`;
         } else {
             html += `<td class="col-name">Без названия</td>`;
@@ -1441,16 +1441,21 @@ return { barcode: item.barcode, packQty, autoDivFactor,
         // Для позиций не из моего прайса: подставляем штрихкод и наименование
         // от поставщика с минимальной ценой на этот товар
         let _supplierFill = false;
+        let _bestSup = null;
         let _mainBarcode = item.barcode;
         let _mainNameOverride = null;
         if (!item.isInMyPrice) {
-            const _bestSup = _getBestSupplierForItem(item);
+            _bestSup = _getBestSupplierForItem(item);
             if (_bestSup) {
                 _mainBarcode = item.originalBarcodesByFile.get(_bestSup) || item.barcode;
                 _mainNameOverride = item.namesByFile ? item.namesByFile.get(_bestSup) || null : null;
                 _supplierFill = true;
             }
         }
+        // Номера колонок (1-based) штрихкода и наименования выбранного поставщика
+        // (в скрытых группах fbS-fbE и nsS-nsE)
+        const _bestSupBcCol  = _bestSup ? fbS + fileNames.indexOf(_bestSup)       : -1;
+        const _bestSupNmCol  = _bestSup ? nsS + nameFileOrder.indexOf(_bestSup)    : -1;
 
         const row=[_mainBarcode];
         fileNames.forEach(fn=>row.push(item.originalBarcodesByFile.get(fn)||''));
@@ -1532,8 +1537,8 @@ return { barcode: item.barcode, packQty, autoDivFactor,
             });
         }
 
-        // Светло-жёлтый фон для подставленных штрихкода/наименования (позиций не из моего прайса)
-        const _ylwFill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFFF59D' } };
+        // Пастельно-жёлтый фон для подставленных значений (позиций не из моего прайса)
+        const _ylwFill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFFFFCE8' } };
 
         // Per-cell: шрифт, выравнивание, границы
         for(let _ci=1; _ci<=totalCols; _ci++){
@@ -1548,8 +1553,14 @@ return { barcode: item.barcode, packQty, autoDivFactor,
                 left:   _grpL           ? _B : _T,
                 right:  _ci===totalCols ? _B : _T
             };
-            // Жёлтый фон только на ячейки штрихкода (col 1) и первого наименования (col nsS)
-            if (_supplierFill && (_ci === 1 || _ci === nsS)) {
+            // Жёлтый фон: главный штрихкод (col 1), первое наименование (col nsS),
+            // а также штрихкод и наименование выбранного поставщика в скрытых группах
+            if (_supplierFill && (
+                _ci === 1 ||
+                _ci === nsS ||
+                (_bestSupBcCol >= fbS && _ci === _bestSupBcCol) ||
+                (_bestSupNmCol >= nsS && _ci === _bestSupNmCol)
+            )) {
                 _cell.fill = _ylwFill;
             }
         }
