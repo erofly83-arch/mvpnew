@@ -1007,7 +1007,7 @@ return { barcode: item.barcode, packQty, autoDivFactor,
             const _tipData = JSON.stringify([..._nm.entries()].map(([name, file]) => ({
                 file, name, barcode: item.originalBarcodesByFile.get(file) || ''
             })));
-            html += `<td class="col-name" data-pm-names="${esc(_tipData)}"><div class="name-cell">`;
+            html += `<td class="col-name" data-pm-names="${escv(_tipData)}"><div class="name-cell">`;
             _nm.forEach((fn, name) => { html += `<div class="name-item" title="📁 ${esc(fn)}">${esc(name)}</div>`; });
             html += `</div></td>`;
         } else {
@@ -1817,9 +1817,9 @@ return { barcode: item.barcode, packQty, autoDivFactor,
                 var barcode = _esc(r.barcode || '');
                 var bg = i % 2 === 1 ? 'background:#F8F9FC;' : '';
                 html += '<div style="display:flex;align-items:baseline;padding:4px 12px;' + bg + '">';
-                html += '<span style="flex-shrink:0;width:130px;font-size:10px;color:#6B7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + _esc(r.file||'') + '">' + _esc(file) + '</span>';
-                html += '<span style="flex:1;font-size:12px;color:#1A1D23;font-weight:500;padding:0 8px;min-width:0;overflow-wrap:break-word;">' + name + '</span>';
-                if (barcode) html += '<span style="flex-shrink:0;font-size:10px;color:#9CA3AF;font-family:\'Courier New\',monospace;white-space:nowrap;padding-left:8px;">' + barcode + '</span>';
+                html += '<span style="flex-shrink:0;width:130px;font-size:11px;color:#6B7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + _esc(r.file||'') + '">' + _esc(file) + '</span>';
+                html += '<span style="flex:1;font-size:11px;color:#1A1D23;font-weight:500;padding:0 8px;min-width:0;overflow-wrap:break-word;">' + name + '</span>';
+                if (barcode) html += '<span style="flex-shrink:0;font-size:11px;color:#6B7280;white-space:nowrap;padding-left:8px;">' + barcode + '</span>';
                 html += '</div>';
             });
             html += '</div>';
