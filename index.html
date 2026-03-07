@@ -106,20 +106,21 @@
 <button class="btn unified-unsaved-save-btn" onclick="downloadCurrentSynonyms()" title="Скачать файл памяти (JSON)">💾 Сохранить</button>
 <span class="unified-unsaved-hint">Не забудьте сохранить</span>
 </div>
-<div class="sidebar-links-group">
-<a class="sidebar-contact-link" href="tel:+79130998250">
-<svg fill="none" height="13" viewbox="0 0 24 24" width="13" xmlns="http://www.w3.org/2000/svg">
-<path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C9.61 21 3 14.39 3 6a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1.02l-2.2 2.2z" fill="currentColor"></path>
-</svg>
-        +7 913 099-82-50
-      </a>
-<a class="sidebar-contact-link" href="https://t.me/vorontsov_dmitriy" rel="noopener" target="_blank">
-<svg fill="none" height="13" viewbox="0 0 24 24" width="13" xmlns="http://www.w3.org/2000/svg">
-<circle cx="12" cy="12" fill="#0088cc" r="12"></circle>
-<path d="M17.64 7.29l-2.07 9.75c-.15.68-.56.85-1.13.53l-3.13-2.3-1.51 1.45c-.17.17-.31.31-.62.31l.22-3.18 5.74-5.18c.25-.22-.05-.34-.39-.12L6.4 13.4 3.31 12.45c-.67-.21-.68-.67.14-.99l13.47-5.19c.56-.2 1.05.14.72.99v.03z" fill="white"></path>
-</svg>
-        Telegram
-      </a>
+<div class="sidebar-contact-block">
+<div class="sidebar-contact-label">Связаться с автором</div>
+<a class="sidebar-contact-card sidebar-contact-card--phone" href="tel:+79130998250" title="+7 913 099-82-50">
+<span class="sidebar-contact-card-icon">
+<svg fill="none" height="14" viewbox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 011 1V20a1 1 0 01-1 1C9.61 21 3 14.39 3 6a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1.02l-2.2 2.2z" fill="currentColor"/></svg>
+</span>
+<span class="sidebar-contact-card-text">+7 913 099-82-50</span>
+</a>
+<a class="sidebar-contact-card sidebar-contact-card--tg" href="https://t.me/vorontsov_dmitriy" rel="noopener" target="_blank" title="Telegram">
+<span class="sidebar-contact-card-icon">
+<svg height="14" viewbox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" fill="#0088cc" r="12"/><path d="M17.64 7.29l-2.07 9.75c-.15.68-.56.85-1.13.53l-3.13-2.3-1.51 1.45c-.17.17-.31.31-.62.31l.22-3.18 5.74-5.18c.25-.22-.05-.34-.39-.12L6.4 13.4 3.31 12.45c-.67-.21-.68-.67.14-.99l13.47-5.19c.56-.2 1.05.14.72.99v.03z" fill="white"/></svg>
+</span>
+<span class="sidebar-contact-card-text">@vorontsov_dmitriy</span>
+</a>
+</div>
 <!-- PWA: кнопка установки (скрыта по умолчанию) -->
 <button id="errLogBtn" onclick="window.openErrLog()" style="display:none;width:100%;margin-top:4px;padding:7px 10px;background:#fff1f2;color:#b91c1c;border:1px solid #fca5a5;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;align-items:center;justify-content:center;gap:7px;transition:background .15s,border-color .15s;line-height:1;" onmouseover="this.style.background='#fee2e2';this.style.borderColor='#ef4444'" onmouseout="this.style.background='#fff1f2';this.style.borderColor='#fca5a5'" title="Открыть журнал ошибок">
   <span style="font-size:14px;">⚠️</span> Ошибки (<span id="errLogCount">0</span>)
