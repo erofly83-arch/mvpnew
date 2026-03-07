@@ -41,9 +41,26 @@ const BRAND_CONFIG_SAVED = {};
   window._logErr = function(e, ctx) { _push(e, ctx); };
   window.openErrLog  = function() { _renderList(); document.getElementById('errLogModal').style.display = 'flex'; };
   window.closeErrLog = function() { document.getElementById('errLogModal').style.display = 'none'; };
-  window.copyErrLog  = function() {
-    var txt = _errs.map(function(e){ return e.full; }).join('\n---\n');
-    navigator.clipboard && navigator.clipboard.writeText(txt).then(function(){ if(typeof showToast==='function') showToast('Скопировано', 'ok'); });
+  function _buildReport() {
+    var ua = (navigator.userAgent.match(/(Chrome|Firefox|Safari|Edge)\/[\d.]+/) || [''])[0];
+    var header = '🐛 Отчёт об ошибке — Прайс-менеджер\n'
+      + '📅 ' + new Date().toLocaleString('ru') + '\n'
+      + '🌐 ' + (ua || navigator.userAgent.slice(0, 40)) + '\n'
+      + '─────────────────────────────────\n';
+    var body = _errs.map(function(e, i) {
+      return (i + 1) + ') ' + e.full;
+    }).join('\n\n');
+    return header + (body || 'Ошибок нет');
+  }
+  window.copyErrLog = function() {
+    var txt = _buildReport();
+    navigator.clipboard && navigator.clipboard.writeText(txt).then(function() {
+      if (typeof showToast === 'function') showToast('Скопировано — вставьте в Telegram разработчику', 'ok');
+    });
+  };
+  window.sendErrToTelegram = function() {
+    var txt = encodeURIComponent(_buildReport());
+    window.open('https://t.me/vorontsov_dmitriy?text=' + txt, '_blank');
   };
   window.clearErrLog = function() {
     _errs = [];

@@ -121,22 +121,31 @@
         Telegram
       </a>
 <!-- PWA: кнопка установки (скрыта по умолчанию) -->
-<button id="errLogBtn" onclick="window.openErrLog()" style="display:none;width:100%;margin-top:4px;padding:8px 10px;background:#7f1d1d;color:#fca5a5;border:1px solid #991b1b;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;align-items:center;justify-content:center;gap:7px;transition:opacity .2s;line-height:1;" title="Открыть журнал ошибок">
-  <span style="font-size:15px;">⚠️</span> Ошибки (<span id="errLogCount">0</span>)
+<button id="errLogBtn" onclick="window.openErrLog()" style="display:none;width:100%;margin-top:4px;padding:7px 10px;background:#fff1f2;color:#b91c1c;border:1px solid #fca5a5;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;align-items:center;justify-content:center;gap:7px;transition:background .15s,border-color .15s;line-height:1;" onmouseover="this.style.background='#fee2e2';this.style.borderColor='#ef4444'" onmouseout="this.style.background='#fff1f2';this.style.borderColor='#fca5a5'" title="Открыть журнал ошибок">
+  <span style="font-size:14px;">⚠️</span> Ошибки (<span id="errLogCount">0</span>)
 </button>
 <!-- Модальное окно журнала ошибок -->
-<div id="errLogModal" onclick="if(event.target===this)window.closeErrLog()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;align-items:center;justify-content:center;">
-  <div style="background:#1e293b;border:1px solid #7f1d1d;border-radius:12px;padding:20px;max-width:700px;width:95%;max-height:80vh;display:flex;flex-direction:column;gap:12px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;">
-      <span style="font-family:'Inter',sans-serif;font-weight:700;color:#fca5a5;font-size:15px;">⚠️ Журнал ошибок сессии</span>
-      <div style="display:flex;gap:8px;">
-        <button onclick="window.copyErrLog()" style="padding:4px 12px;border-radius:6px;border:1px solid #475569;background:#334155;color:#e2e8f0;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;">📋 Скопировать</button>
-        <button onclick="window.clearErrLog()" style="padding:4px 12px;border-radius:6px;border:1px solid #475569;background:#334155;color:#e2e8f0;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;">🗑 Очистить</button>
-        <button onclick="window.closeErrLog()" style="padding:4px 12px;border-radius:6px;border:1px solid #475569;background:#334155;color:#e2e8f0;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;">✕</button>
+<div id="errLogModal" onclick="if(event.target===this)window.closeErrLog()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99999;align-items:center;justify-content:center;">
+  <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;width:min(680px,95vw);max-height:82vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;">
+    <!-- Заголовок -->
+    <div style="display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid #334155;background:#0f172a;">
+      <span style="font-size:20px;">⚠️</span>
+      <div style="flex:1;">
+        <div style="font-family:'Inter',sans-serif;font-weight:700;color:#f1f5f9;font-size:15px;">Журнал ошибок</div>
+        <div style="font-family:'Inter',sans-serif;font-size:11px;color:#64748b;margin-top:1px;">Отправьте отчёт разработчику для исправления</div>
       </div>
+      <button onclick="window.closeErrLog()" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;padding:4px 6px;border-radius:6px;line-height:1;transition:color .15s;" onmouseover="this.style.color='#f1f5f9'" onmouseout="this.style.color='#64748b'">✕</button>
     </div>
-    <div id="errLogList" style="overflow-y:auto;flex:1;font-family:'Courier New',monospace;font-size:11px;color:#e2e8f0;display:flex;flex-direction:column;gap:6px;">
+    <!-- Список ошибок -->
+    <div id="errLogList" style="overflow-y:auto;flex:1;padding:14px 16px;font-family:'Courier New',monospace;font-size:11px;color:#e2e8f0;display:flex;flex-direction:column;gap:8px;">
       <span style="color:#64748b;font-family:'Inter',sans-serif;">Ошибок нет</span>
+    </div>
+    <!-- Подвал с кнопками -->
+    <div style="display:flex;align-items:center;gap:8px;padding:14px 16px;border-top:1px solid #334155;background:#0f172a;flex-wrap:wrap;">
+      <div style="font-family:'Inter',sans-serif;font-size:11px;color:#64748b;flex:1;min-width:120px;">Скопируйте или отправьте напрямую</div>
+      <button onclick="window.copyErrLog()" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;border:1px solid #475569;background:#334155;color:#e2e8f0;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s,border-color .15s;" onmouseover="this.style.background='#475569'" onmouseout="this.style.background='#334155'">📋 Скопировать отчёт</button>
+      <button onclick="window.sendErrToTelegram()" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;border:1px solid #2563eb;background:#1d4ed8;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#1d4ed8'">✈️ Отправить в Telegram</button>
+      <button onclick="window.clearErrLog()" style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:8px;border:1px solid #475569;background:transparent;color:#64748b;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;transition:color .15s,border-color .15s;" onmouseover="this.style.color='#ef4444';this.style.borderColor='#ef4444'" onmouseout="this.style.color='#64748b';this.style.borderColor='#475569'">🗑 Очистить</button>
     </div>
   </div>
 </div>
