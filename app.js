@@ -18,9 +18,11 @@ const BRAND_CONFIG_SAVED = {};
 
   function _buildReport() {
     var ua = (navigator.userAgent.match(/(Chrome|Firefox|Safari|Edge)\/[\d.]+/) || [''])[0];
+    var contact = window._userContact ? '👤 ' + window._userContact + '\n' : '';
     var header = '🐛 Ошибка — Прайс-менеджер\n'
       + '📅 ' + new Date().toLocaleString('ru') + '\n'
       + '🌐 ' + (ua || navigator.userAgent.slice(0, 40)) + '\n'
+      + contact
       + '─────────────────────────────────\n';
     var body = _errs.map(function(e, i) {
       return (i + 1) + ') ' + e.full;
@@ -29,12 +31,14 @@ const BRAND_CONFIG_SAVED = {};
   }
 
   function _autoSendTg(errEntry) {
-    if (_autoSent) return; // не спамим, только первая ошибка
+    if (_autoSent) return;
     _autoSent = true;
     var ua = (navigator.userAgent.match(/(Chrome|Firefox|Safari|Edge)\/[\d.]+/) || [''])[0];
+    var contact = window._userContact ? '👤 ' + window._userContact + '\n' : '';
     var text = '🐛 Авто-отчёт — Прайс-менеджер\n'
       + '📅 ' + new Date().toLocaleString('ru') + '\n'
       + '🌐 ' + (ua || navigator.userAgent.slice(0, 40)) + '\n'
+      + contact
       + '─────────────────────────────────\n'
       + errEntry.full;
     fetch('https://api.telegram.org/bot' + _TG_TOKEN + '/sendMessage', {
@@ -80,6 +84,49 @@ const BRAND_CONFIG_SAVED = {};
   window._logErr = function(e, ctx) { _push(e, ctx); };
   window.openErrLog  = function() { _renderList(); document.getElementById('errLogModal').style.display = 'flex'; };
   window.closeErrLog = function() { document.getElementById('errLogModal').style.display = 'none'; };
+
+  // ── Контакт пользователя ─────────────────────────────────────────────────
+  window._userContact = '';
+  window._userContactRender = function() {
+    var val = window._userContact || '';
+    var empty  = document.getElementById('userContactEmpty');
+    var filled = document.getElementById('userContactFilled');
+    var valEl  = document.getElementById('userContactValue');
+    var input  = document.getElementById('userContactInput');
+    if (!empty || !filled) return;
+    if (val) {
+      empty.style.display  = 'none';
+      filled.style.display = 'flex';
+      if (valEl) valEl.textContent = val;
+    } else {
+      empty.style.display  = 'flex';
+      filled.style.display = 'none';
+      if (input) input.value = '';
+    }
+  };
+  window.saveUserContact = function() {
+    var input = document.getElementById('userContactInput');
+    var val = (input ? input.value : '').trim();
+    if (!val) { if (typeof showToast === 'function') showToast('Введите контакт', 'warn'); return; }
+    window._userContact = val;
+    window._userContactRender();
+    if (typeof unifiedMarkUnsaved === 'function') unifiedMarkUnsaved(true);
+    if (typeof showToast === 'function') showToast('Контакт сохранён — не забудьте скачать файл памяти', 'ok');
+  };
+  window.editUserContact = function() {
+    var input  = document.getElementById('userContactInput');
+    var empty  = document.getElementById('userContactEmpty');
+    var filled = document.getElementById('userContactFilled');
+    if (input) input.value = window._userContact || '';
+    if (empty)  empty.style.display  = 'flex';
+    if (filled) filled.style.display = 'none';
+    if (input) input.focus();
+  };
+  // Вызывать после загрузки JSON
+  window._userContactLoad = function(val) {
+    window._userContact = val || '';
+    window._userContactRender();
+  };
   window.copyErrLog = function() {
     var txt = _buildReport();
     navigator.clipboard && navigator.clipboard.writeText(txt).then(function() {
@@ -1816,6 +1863,7 @@ return { barcode: item.barcode, packQty, autoDivFactor,
     async function downloadCurrentSynonyms(){
 
       const combined = {
+        userContact: (window._userContact || undefined),
         barcodes: jeDB,
         brands: typeof _brandDB !== 'undefined' ? _brandDB : {},
         categoryWords: (typeof _catWordsBase !== 'undefined' && _catWordsBase.size > 0) ? [..._catWordsBase].sort() : undefined,
@@ -5048,6 +5096,9 @@ function rebuildBarcodeAliasFromJeDB(_skip) {
 // ли тот или иной ключ (отсутствие ключа = сброс к значению по умолчанию).
 function applyJsonToState(json, fileName) {
   if (!json || typeof json !== 'object' || Array.isArray(json)) return;
+
+  // ── 0. Контакт пользователя ──────────────────────────────────────────────
+  if (typeof window._userContactLoad === 'function') window._userContactLoad(json.userContact || '');
 
   // ── 1. Штрихкоды (barcodes / кросскоды) ─────────────────────────────────
   const hasBarcodes = 'barcodes' in json;

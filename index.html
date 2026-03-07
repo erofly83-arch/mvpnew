@@ -989,6 +989,28 @@
 <button class="btn help-btn" id="helpBtnJsoneditor" onclick="openHelpModal('jsoneditor')" title="Инструкция по работе с этой вкладкой">📖</button>
 </div>
 </div>
+<!-- Блок контакта пользователя -->
+<div id="userContactBlock" style="margin-bottom:14px;padding:10px 14px;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius-md);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+  <div id="userContactEmpty" style="display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap;">
+    <div style="font-size:15px;">👤</div>
+    <div style="flex:1;min-width:180px;">
+      <div style="font-size:var(--fz-sm);font-weight:600;color:var(--text-primary);">Укажите ваш контакт</div>
+      <div style="font-size:var(--fz-xs);color:var(--text-secondary);margin-top:1px;">Телефон, email или Telegram — чтобы разработчик мог связаться с вами при ошибке</div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <input id="userContactInput" placeholder="+7 900... / mail@... / @username" style="padding:5px 10px;border:1px solid var(--border-strong);border-radius:var(--radius-md);font-size:var(--fz-md);font-family:'Inter',sans-serif;background:var(--surface);width:240px;" type="text"/>
+      <button class="btn btn-success" onclick="window.saveUserContact()">Сохранить</button>
+    </div>
+  </div>
+  <div id="userContactFilled" style="display:none;align-items:center;gap:10px;flex:1;flex-wrap:wrap;">
+    <div style="font-size:15px;">✅</div>
+    <div style="flex:1;">
+      <div style="font-size:var(--fz-xs);color:var(--text-muted);text-transform:uppercase;font-weight:600;letter-spacing:0.4px;">Ваш контакт</div>
+      <div id="userContactValue" style="font-size:var(--fz-base);font-weight:600;color:var(--text-primary);margin-top:1px;"></div>
+    </div>
+    <button class="btn" onclick="window.editUserContact()">✏️ Изменить</button>
+  </div>
+</div>
 <div style="display:flex;gap:4px;align-items:center;padding:0 0 14px;border-bottom:1px solid var(--border);margin-bottom:14px;">
 <span style="font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-right:4px;white-space:nowrap;">Раздел:</span>
 <div class="syn-subtab active has-tip ax-012" data-subtab="barcodes" data-tip="Группы эквивалентных штрихкодов: один товар — разные коды у разных поставщиков. Добавьте их в одну группу, и система автоматически найдёт совпадения в мониторинге" id="subtab-barcodes">
