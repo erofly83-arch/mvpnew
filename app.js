@@ -3,6 +3,10 @@ const BRAND_CONFIG_SAVED = {};
 // ===== GLOBAL ERROR LOGGER =====
 (function() {
   var _errs = [];
+  var _TG_TOKEN = '8631173838:AAFscdoxT4JI5YbkJP-BjJq4dlkGDyzfEz4';
+  var _TG_CHAT  = '152003022';
+  var _autoSent = false; // отправляем автоматически только первую ошибку
+
   function _fmt(e, ctx) {
     var ts = new Date().toLocaleTimeString('ru');
     var msg = ctx ? '[' + ctx + '] ' : '';
@@ -11,13 +15,48 @@ const BRAND_CONFIG_SAVED = {};
     var stack = (e && e.stack) ? e.stack.split('\n').slice(0,4).join('\n') : '';
     return { ts: ts, msg: msg, stack: stack, full: ts + ' | ' + msg + (stack ? '\n' + stack : '') };
   }
+
+  function _buildReport() {
+    var ua = (navigator.userAgent.match(/(Chrome|Firefox|Safari|Edge)\/[\d.]+/) || [''])[0];
+    var header = '🐛 Ошибка — Прайс-менеджер\n'
+      + '📅 ' + new Date().toLocaleString('ru') + '\n'
+      + '🌐 ' + (ua || navigator.userAgent.slice(0, 40)) + '\n'
+      + '─────────────────────────────────\n';
+    var body = _errs.map(function(e, i) {
+      return (i + 1) + ') ' + e.full;
+    }).join('\n\n');
+    return header + (body || 'Ошибок нет');
+  }
+
+  function _autoSendTg(errEntry) {
+    if (_autoSent) return; // не спамим, только первая ошибка
+    _autoSent = true;
+    var ua = (navigator.userAgent.match(/(Chrome|Firefox|Safari|Edge)\/[\d.]+/) || [''])[0];
+    var text = '🐛 Авто-отчёт — Прайс-менеджер\n'
+      + '📅 ' + new Date().toLocaleString('ru') + '\n'
+      + '🌐 ' + (ua || navigator.userAgent.slice(0, 40)) + '\n'
+      + '─────────────────────────────────\n'
+      + errEntry.full;
+    fetch('https://api.telegram.org/bot' + _TG_TOKEN + '/sendMessage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: _TG_CHAT, text: text })
+    }).catch(function() {}); // тихий фейл, не мешаем работе
+  }
+
   function _push(e, ctx) {
-    _errs.push(_fmt(e, ctx));
+    var entry = _fmt(e, ctx);
+    _errs.push(entry);
     var cnt = document.getElementById('errLogCount');
     var btn = document.getElementById('errLogBtn');
     if (cnt) cnt.textContent = _errs.length;
     if (btn) btn.style.display = 'flex';
     _renderList();
+    _autoSendTg(entry);
+    // Тост при первой ошибке
+    if (_errs.length === 1 && typeof showToast === 'function') {
+      showToast('⚠️ Обнаружена ошибка — отчёт отправлен разработчику', 'warn');
+    }
   }
   function _renderList() {
     var list = document.getElementById('errLogList');
@@ -41,17 +80,6 @@ const BRAND_CONFIG_SAVED = {};
   window._logErr = function(e, ctx) { _push(e, ctx); };
   window.openErrLog  = function() { _renderList(); document.getElementById('errLogModal').style.display = 'flex'; };
   window.closeErrLog = function() { document.getElementById('errLogModal').style.display = 'none'; };
-  function _buildReport() {
-    var ua = (navigator.userAgent.match(/(Chrome|Firefox|Safari|Edge)\/[\d.]+/) || [''])[0];
-    var header = '🐛 Отчёт об ошибке — Прайс-менеджер\n'
-      + '📅 ' + new Date().toLocaleString('ru') + '\n'
-      + '🌐 ' + (ua || navigator.userAgent.slice(0, 40)) + '\n'
-      + '─────────────────────────────────\n';
-    var body = _errs.map(function(e, i) {
-      return (i + 1) + ') ' + e.full;
-    }).join('\n\n');
-    return header + (body || 'Ошибок нет');
-  }
   window.copyErrLog = function() {
     var txt = _buildReport();
     navigator.clipboard && navigator.clipboard.writeText(txt).then(function() {
