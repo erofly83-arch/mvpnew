@@ -248,6 +248,14 @@ function samePrice(a, b) {
         return fileName.replace(/\.(csv|xlsx|xls)$/i, '');
     }
 
+    // Обрезает длинное имя файла для отображения в шапке таблицы и заголовках Excel.
+    // maxLen=22 — оптимально для колонки ~120px; полное имя остаётся в атрибуте title.
+    function truncateFileName(name, maxLen) {
+        maxLen = maxLen || 22;
+        if (!name || name.length <= maxLen) return name;
+        return name.slice(0, maxLen - 1) + '…';
+    }
+
     function handleSearch(e) {
         clearTimeout(_searchDebounceTimer);
         const _newQuery = e.target.value.toLowerCase().trim();
@@ -940,7 +948,7 @@ return { barcode: item.barcode, packQty, autoDivFactor,
         h += `<th class="col-barcode">Штрихкод</th>`;
         allFilesData.forEach(({fileName}, idx) => {
             const ec = showFileBarcodes ? '' : 'hidden-barcode-col';
-            h += `<th class="col-barcode file-barcode-col ${ec}" data-file-index="${idx}">Штрихкод (${fileName})</th>`;
+            h += `<th class="col-barcode file-barcode-col ${ec}" data-file-index="${idx}" title="Штрихкод (${fileName})">Штрихкод (${truncateFileName(fileName, 18)})</th>`;
         });
         h += `<th class="col-name">${nameColumn}</th>`;
         visibleCols.forEach(col => {
@@ -952,7 +960,7 @@ return { barcode: item.barcode, packQty, autoDivFactor,
             if (_isMyP || _isMeta) {
                 h += `<th class="${_isMyP ? 'col-my-price' : 'col-meta'}" data-col-key="${_ck}" title="${MY_PRICE_FILE_NAME} — ${_cL}"><div class="column-header"><div class="column-file-name column-file-name--my-price">${MY_PRICE_FILE_NAME}</div><div class="column-header-title"><span class="column-name-text">${_cL}</span></div></div></th>`;
             } else {
-                h += `<th data-col-key="${_ck}" title="${_fL} — ${_cL}"><div class="column-header"><div class="column-file-name" title="${_fL}">${_fL}</div><div class="column-header-title"><span class="column-name-text">${_cL}</span></div></div></th>`;
+                h += `<th data-col-key="${_ck}" title="${_fL} — ${_cL}"><div class="column-header"><div class="column-file-name" title="${_fL}">${truncateFileName(_fL)}</div><div class="column-header-title"><span class="column-name-text">${_cL}</span></div></div></th>`;
             }
         });
         h += `</tr>`;
@@ -1308,18 +1316,25 @@ return { barcode: item.barcode, packQty, autoDivFactor,
     else dataToExport=groupedData;
 
     const workbook=new ExcelJS.Workbook();
+    workbook.creator='Price Manager';
     const worksheet=workbook.addWorksheet('Сравнение');
     const totalCols=1+fileNames.length+nameFileOrder.length+excelCols.length;
 
+    // Стили — идентичны корзине заказов
+    const _xlHdrFill   = { type:'pattern', pattern:'solid', fgColor:{argb:'FF3B6FD4'} };
+    const _xlHdrFont   = { bold:true, color:{argb:'FFFFFFFF'}, size:10 };
+    const _xlThinBrd   = { style:'thin',   color:{argb:'FFC8CDD8'} };
+    const _xlBoldBrd   = { style:'medium', color:{argb:'FF3B6FD4'} };
+
     const headers=['Штрихкод'];
-    fileNames.forEach(fn=>headers.push(`Штрихкод (${fn})`));
+    fileNames.forEach(fn=>headers.push(`Штрихкод (${truncateFileName(fn, 20)})`));
     nameFileOrder.forEach(fn=>headers.push('Наименование'));
     excelCols.forEach(col=>{
         const _isMyP=!col.metaType&&col.fileName===MY_PRICE_FILE_NAME;
         if(_isMyP||col.metaType){
             headers.push(col.metaType?col.displayName:col.columnName);
         } else {
-            headers.push(col.fileName+'\n'+col.columnName);
+            headers.push(truncateFileName(col.fileName, 20)+'\n'+col.columnName);
         }
     });
     const _xlH=worksheet.addRow(headers);
@@ -1436,18 +1451,22 @@ return { barcode: item.barcode, packQty, autoDivFactor,
     worksheet.eachRow((row,rowNum)=>{
         row.eachCell({includeEmpty:true},(cell,colNum)=>{
             const _eci=colNum-1-priceStartColBase;
+            const _isLeft  = colNum===1 || (_eci>=0 && thickLeftAt.has(_eci));
+            const _isRight = colNum===totalCols;
+            const _isTop   = rowNum===1;
+            const _isBot   = rowNum===totalRows;
             cell.border={
-                top:   {style:rowNum===1?'medium':'thin'},
-                left:  {style:(colNum===1||(_eci>=0&&thickLeftAt.has(_eci)))?'medium':'thin'},
-                bottom:{style:rowNum===totalRows?'medium':'thin'},
-                right: {style:colNum===totalCols?'medium':'thin'}
+                top:    _isTop  ? _xlBoldBrd : _xlThinBrd,
+                left:   _isLeft ? _xlBoldBrd : _xlThinBrd,
+                bottom: _isBot  ? _xlBoldBrd : _xlThinBrd,
+                right:  _isRight? _xlBoldBrd : _xlThinBrd
             };
         });
     });
 
     const headerRow=worksheet.getRow(1);
-    headerRow.font={bold:true};
-    headerRow.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE0E0E0'}};
+    headerRow.font=_xlHdrFont;
+    headerRow.fill=_xlHdrFill;
     headerRow.alignment={vertical:'middle',horizontal:'center',wrapText:true};
     headerRow.height=45;
     if(fbS<=headers.length)headerRow.getCell(fbS).note='Штрихкоды по файлам';
