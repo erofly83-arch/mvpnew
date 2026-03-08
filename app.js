@@ -86,7 +86,7 @@ const BRAND_CONFIG_SAVED = {};
   window.closeErrLog = function() { document.getElementById('errLogModal').style.display = 'none'; };
 
   // ── Контакт пользователя ─────────────────────────────────────────────────
-  window._userContact = '';
+  window._userContact = localStorage.getItem('userContact') || '';
   window._userContactRender = function() {
     var val = window._userContact || '';
     var empty  = document.getElementById('userContactEmpty');
@@ -109,9 +109,9 @@ const BRAND_CONFIG_SAVED = {};
     var val = (input ? input.value : '').trim();
     if (!val) { if (typeof showToast === 'function') showToast('Введите контакт', 'warn'); return; }
     window._userContact = val;
+    localStorage.setItem('userContact', val);
     window._userContactRender();
-    if (typeof unifiedMarkUnsaved === 'function') unifiedMarkUnsaved(true);
-    if (typeof showToast === 'function') showToast('Контакт сохранён — не забудьте скачать файл памяти', 'ok');
+    if (typeof showToast === 'function') showToast('Контакт сохранён', 'ok');
   };
   window.editUserContact = function() {
     var input  = document.getElementById('userContactInput');

@@ -258,14 +258,6 @@ body.order-mode .price-in-cart::after{content:'✓ в корзине' !important
   height: 30px;
   font-size: var(--fz-md);
 }
-.unified-unsaved-hint {
-  font-size: 10px;
-  font-weight: 300;
-  color: var(--red);
-  text-align: center;
-  line-height: 1.3;
-  width: 100%;
-}
 
 
 
