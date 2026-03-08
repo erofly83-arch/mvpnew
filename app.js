@@ -6187,7 +6187,7 @@ function toggleSidebar() {
       item.classList.remove('sidebar-file-item--empty');
       item.classList.add('sidebar-file-item--loaded');
       nameEl.textContent = sfShorten(fileName, 22);
-      badge.style.display = '';
+      if (badge) badge.style.display = '';
       if (entryCount != null) {
         meta.style.display = '';
         meta.innerHTML = '<strong>' + entryCount + '</strong> записей в базе';
@@ -6196,7 +6196,7 @@ function toggleSidebar() {
       item.classList.add('sidebar-file-item--empty');
       item.classList.remove('sidebar-file-item--loaded');
       nameEl.textContent = 'JSON не загружен';
-      badge.style.display = 'none';
+      if (badge) badge.style.display = 'none';
       meta.style.display = 'none';
     }
   }
@@ -6211,7 +6211,7 @@ function toggleSidebar() {
       item.classList.remove('sidebar-file-item--empty');
       item.classList.add('sidebar-file-item--myprice');
       nameEl.textContent = sfShorten(fileName, 22);
-      badge.style.display = '';
+      if (badge) badge.style.display = '';
       if (rows != null) {
         meta.style.display = '';
         meta.innerHTML = '<strong>' + rows.toLocaleString('ru') + '</strong> строк';
@@ -6220,7 +6220,7 @@ function toggleSidebar() {
       item.classList.add('sidebar-file-item--empty');
       item.classList.remove('sidebar-file-item--myprice');
       nameEl.textContent = 'Мой прайс не загружен';
-      badge.style.display = 'none';
+      if (badge) badge.style.display = 'none';
       meta.style.display = 'none';
     }
   }
