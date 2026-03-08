@@ -6243,7 +6243,6 @@ function toggleSidebar() {
         <div class="sf-row sf-supplier-row">
           <span class="sf-icon">📦</span>
           <span class="sf-name" title="${f.name.replace(/"/g,'&quot;')}">${f.name.length > 18 ? f.name.slice(0,17) + '…' : f.name}</span>
-          <span class="sf-type sf-type--supplier">CSV</span>
           <button class="sf-supplier-del" title="Удалить файл поставщика" onclick="removeSupplierFile('${f.name.replace(/'/g,"\\'")}')">✕</button>
         </div>
       </div>`).join('');
