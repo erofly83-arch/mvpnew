@@ -7223,6 +7223,7 @@ document.addEventListener('click', function(e) {
   };
   document.addEventListener('DOMContentLoaded', function() {
     _applyOrderModeUI(orderMode);
+    if (typeof window._userContactRender === 'function') window._userContactRender();
   });
   _applyOrderModeUI(orderMode);
 
